@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { SurveyResponse } from "@/lib/types";
 
 const labels: Record<string, string> = {
@@ -14,6 +14,7 @@ const labels: Record<string, string> = {
   not_sure_disposal: "Not sure", not_sure_sep: "Not sure",
 };
 const readable = (value: string) => labels[value] ?? value.replaceAll("_", " ");
+const RESET_PHRASE = "DELETE ALL RESPONSES";
 const percent = (part: number, total: number) => total ? Math.round((part / total) * 100) : 0;
 
 export default function AdminDashboard() {
@@ -22,6 +23,14 @@ export default function AdminDashboard() {
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState("");
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetPhrase, setResetPhrase] = useState("");
+  const [resetAcknowledged, setResetAcknowledged] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetError, setResetError] = useState("");
+  const [resetSuccess, setResetSuccess] = useState("");
+  const resetDialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     fetch("/api/admin/responses", { cache: "no-store" }).then(async (response) => {
@@ -31,6 +40,13 @@ export default function AdminDashboard() {
       setRows(data.responses);
     }).catch((reason) => setError(reason instanceof Error ? reason.message : "Could not load data.")).finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    const dialog = resetDialogRef.current;
+    if (!dialog) return;
+    if (resetOpen && !dialog.open) dialog.showModal();
+    if (!resetOpen && dialog.open) dialog.close();
+  }, [resetOpen]);
 
   const baseline = useMemo(() => rows.filter((row) => row.wave === "baseline"), [rows]);
   const followUp = useMemo(() => rows.filter((row) => row.wave === "follow_up"), [rows]);
@@ -62,6 +78,46 @@ export default function AdminDashboard() {
     window.location.assign("/admin/login");
   }
 
+  function openResetDialog() {
+    setResetError("");
+    setResetPassword("");
+    setResetPhrase("");
+    setResetAcknowledged(false);
+    setResetSuccess("");
+    setResetOpen(true);
+  }
+
+  async function resetAllResponses(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setResetError("");
+    setResetBusy(true);
+    try {
+      const response = await fetch("/api/admin/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: resetPassword, confirmation: resetPhrase.trim(), acknowledged: resetAcknowledged }),
+      });
+      const result = await response.json();
+      if (response.status === 401 && String(result.error).toLowerCase().includes("session")) {
+        window.location.assign("/admin/login");
+        return;
+      }
+      if (!response.ok) throw new Error(result.error || "The data reset could not be completed.");
+      setRows([]);
+      setQuery("");
+      setOpenId("");
+      setResetSuccess(`${Number(result.deletedCount).toLocaleString()} survey responses were permanently deleted. The dashboard is now reset.`);
+      setResetPassword("");
+      setResetPhrase("");
+      setResetAcknowledged(false);
+      setResetOpen(false);
+    } catch (reason) {
+      setResetError(reason instanceof Error ? reason.message : "The data reset could not be completed.");
+    } finally {
+      setResetBusy(false);
+    }
+  }
+
   return <main className="admin-shell">
     <header className="admin-topbar"><a href="/" className="brand"><span className="brand-mark">e</span><span>EcoTool <small>Research dashboard</small></span></a><div className="admin-top-actions"><span className="secure-badge"><i /> Admin view</span><button className="button button-quiet" onClick={logout}>Sign out</button></div></header>
     <div className="admin-content">
@@ -85,9 +141,36 @@ export default function AdminDashboard() {
         <section className="responses-panel panel"><div className="responses-head"><div><span className="panel-kicker">RECORDS</span><h2>All collected surveys <span className="record-count">{rows.length}</span></h2></div><div className="response-tools"><label className="search-box"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search survey records" /></label><a className="button button-outline" href="/api/admin/export">Export CSV</a></div></div>
           {!filteredRows.length ? <Empty text={rows.length ? "No records match that search." : "Your saved surveys will appear here."} /> : <div className="response-list">{filteredRows.map((row, index) => <ResponseRow key={row.id} row={row} index={index + 1} opened={openId === row.id} onToggle={() => setOpenId(openId === row.id ? "" : row.id)} />)}</div>}
         </section>
+        <section className="reset-panel" aria-labelledby="reset-panel-title">
+          <div className="reset-panel-copy">
+            <span className="reset-panel-icon" aria-hidden="true">!</span>
+            <div><span className="reset-kicker">DANGER ZONE</span><h2 id="reset-panel-title">Reset collected data</h2><p>Permanently erase every survey response from the database. This cannot be undone.</p></div>
+          </div>
+          <div className="reset-panel-action"><span>{rows.length.toLocaleString()} response{rows.length === 1 ? "" : "s"} currently stored</span><button className="button reset-open-button" type="button" onClick={openResetDialog} disabled={rows.length === 0}>Erase all survey data</button></div>
+          {resetSuccess && <p className="reset-success" role="status">{resetSuccess}</p>}
+        </section>
         <p className="data-note">This dashboard shows the records currently saved in your research database. The CSV contains one row per response and can be imported into Google Sheets.</p>
       </>}
     </div>
+    <dialog
+      ref={resetDialogRef}
+      className="reset-dialog"
+      aria-labelledby="reset-dialog-title"
+      aria-describedby="reset-dialog-description"
+      onCancel={(event) => { event.preventDefault(); if (!resetBusy) setResetOpen(false); }}
+      onClick={(event) => { if (event.target === event.currentTarget && !resetBusy) setResetOpen(false); }}
+    >
+      <div className="reset-dialog-header"><span className="reset-dialog-icon" aria-hidden="true">!</span><div><span className="reset-kicker">PERMANENT ACTION</span><h2 id="reset-dialog-title">Erase all survey data?</h2></div></div>
+      <p id="reset-dialog-description" className="reset-dialog-intro">This will permanently delete every response currently stored in the research database. The charts, comparisons, and CSV export will all return to zero. This action cannot be undone.</p>
+      <div className="reset-count-box"><strong>{rows.length.toLocaleString()} response{rows.length === 1 ? "" : "s"} will be deleted</strong><span>New responses submitted after the reset can still be collected.</span></div>
+      <form className="reset-form" onSubmit={resetAllResponses}>
+        <label className="reset-input-label">Confirm with your admin password<input type="password" autoComplete="current-password" value={resetPassword} onChange={(event) => setResetPassword(event.target.value)} required /></label>
+        <label className="reset-acknowledge"><input type="checkbox" checked={resetAcknowledged} onChange={(event) => setResetAcknowledged(event.target.checked)} /><span>I understand that all collected survey responses will be permanently erased.</span></label>
+        <label className="reset-input-label">Type <strong>{RESET_PHRASE}</strong> to continue<input type="text" autoComplete="off" value={resetPhrase} onChange={(event) => setResetPhrase(event.target.value)} placeholder={RESET_PHRASE} required /></label>
+        {resetError && <p className="reset-error" role="alert">{resetError}</p>}
+        <div className="reset-dialog-actions"><button className="button button-quiet" type="button" onClick={() => setResetOpen(false)} disabled={resetBusy}>Keep my data</button><button className="button reset-submit-button" type="submit" disabled={resetBusy || !resetAcknowledged || resetPhrase.trim() !== RESET_PHRASE || !resetPassword}>{resetBusy ? "Erasing responses…" : "Permanently erase all data"}</button></div>
+      </form>
+    </dialog>
   </main>;
 }
 
