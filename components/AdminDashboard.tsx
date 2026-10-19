@@ -30,7 +30,12 @@ export default function AdminDashboard() {
   const [resetBusy, setResetBusy] = useState(false);
   const [resetError, setResetError] = useState("");
   const [resetSuccess, setResetSuccess] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<SurveyResponse | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [deleteNotice, setDeleteNotice] = useState("");
   const resetDialogRef = useRef<HTMLDialogElement>(null);
+  const deleteDialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     fetch("/api/admin/responses", { cache: "no-store" }).then(async (response) => {
@@ -47,6 +52,13 @@ export default function AdminDashboard() {
     if (resetOpen && !dialog.open) dialog.showModal();
     if (!resetOpen && dialog.open) dialog.close();
   }, [resetOpen]);
+
+  useEffect(() => {
+    const dialog = deleteDialogRef.current;
+    if (!dialog) return;
+    if (deleteTarget && !dialog.open) dialog.showModal();
+    if (!deleteTarget && dialog.open) dialog.close();
+  }, [deleteTarget]);
 
   const baseline = useMemo(() => rows.filter((row) => row.wave === "baseline"), [rows]);
   const followUp = useMemo(() => rows.filter((row) => row.wave === "follow_up"), [rows]);
@@ -76,6 +88,38 @@ export default function AdminDashboard() {
   async function logout() {
     await fetch("/api/admin/logout", { method: "POST" });
     window.location.assign("/admin/login");
+  }
+
+  function promptDeleteResponse(row: SurveyResponse) {
+    setDeleteError("");
+    setDeleteNotice("");
+    setDeleteTarget(row);
+  }
+
+  async function deleteResponse() {
+    if (!deleteTarget) return;
+    setDeleteBusy(true);
+    setDeleteError("");
+    try {
+      const response = await fetch("/api/admin/responses", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: deleteTarget.id }),
+      });
+      const result = await response.json();
+      if (response.status === 401) {
+        window.location.assign("/admin/login");
+        return;
+      }
+      if (!response.ok) throw new Error(result.error || "This response could not be deleted.");
+      setRows((current) => current.filter((row) => row.id !== deleteTarget.id));
+      setDeleteNotice(`${readable(deleteTarget.wave)} response for ${deleteTarget.participant_code} deleted.`);
+      setDeleteTarget(null);
+    } catch (reason) {
+      setDeleteError(reason instanceof Error ? reason.message : "This response could not be deleted.");
+    } finally {
+      setDeleteBusy(false);
+    }
   }
 
   function openResetDialog() {
@@ -139,8 +183,9 @@ export default function AdminDashboard() {
           <article className="panel"><div className="panel-heading"><div><span className="panel-kicker">NEWS ACCESS</span><h2>Where information comes from</h2></div><span className="panel-icon purple-icon">◌</span></div><div className="bar-list">{[["radio", rows.filter((r) => r.news_sources.includes("radio")).length], ["television", rows.filter((r) => r.news_sources.includes("television")).length], ["social_media", rows.filter((r) => r.news_sources.includes("social_media")).length], ["community_meeting", rows.filter((r) => r.news_sources.includes("community_meeting")).length]].map(([key, value]) => <Bar key={String(key)} label={readable(String(key))} value={Number(value)} max={Math.max(1, rows.length)} />)}</div></article>
         </section>
         <section className="responses-panel panel"><div className="responses-head"><div><span className="panel-kicker">RECORDS</span><h2>All collected surveys <span className="record-count">{rows.length}</span></h2></div><div className="response-tools"><label className="search-box"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search survey records" /></label><a className="button button-outline" href="/api/admin/export">Export CSV</a></div></div>
-          {!filteredRows.length ? <Empty text={rows.length ? "No records match that search." : "Your saved surveys will appear here."} /> : <div className="response-list">{filteredRows.map((row, index) => <ResponseRow key={row.id} row={row} index={index + 1} opened={openId === row.id} onToggle={() => setOpenId(openId === row.id ? "" : row.id)} />)}</div>}
+          {!filteredRows.length ? <Empty text={rows.length ? "No records match that search." : "Your saved surveys will appear here."} /> : <div className="response-list">{filteredRows.map((row, index) => <ResponseRow key={row.id} row={row} index={index + 1} opened={openId === row.id} onToggle={() => setOpenId(openId === row.id ? "" : row.id)} onDelete={() => promptDeleteResponse(row)} />)}</div>}
         </section>
+        {deleteNotice && <p className="response-delete-notice" role="status">{deleteNotice}</p>}
         <section className="reset-panel" aria-labelledby="reset-panel-title">
           <div className="reset-panel-copy">
             <span className="reset-panel-icon" aria-hidden="true">!</span>
@@ -171,6 +216,20 @@ export default function AdminDashboard() {
         <div className="reset-dialog-actions"><button className="button button-quiet" type="button" onClick={() => setResetOpen(false)} disabled={resetBusy}>Keep my data</button><button className="button reset-submit-button" type="submit" disabled={resetBusy || !resetAcknowledged || resetPhrase.trim() !== RESET_PHRASE || !resetPassword}>{resetBusy ? "Erasing responses…" : "Permanently erase all data"}</button></div>
       </form>
     </dialog>
+    <dialog
+      ref={deleteDialogRef}
+      className="single-delete-dialog"
+      aria-labelledby="single-delete-title"
+      aria-describedby="single-delete-description"
+      onCancel={(event) => { event.preventDefault(); if (!deleteBusy) setDeleteTarget(null); }}
+      onClick={(event) => { if (event.target === event.currentTarget && !deleteBusy) setDeleteTarget(null); }}
+    >
+      <div className="single-delete-heading"><span className="single-delete-icon" aria-hidden="true">⌫</span><div><span className="reset-kicker">DELETE RESPONSE</span><h2 id="single-delete-title">Delete this response?</h2></div></div>
+      {deleteTarget && <p className="single-delete-record">{readable(deleteTarget.wave)} <span>·</span> Participant <strong>{deleteTarget.participant_code}</strong></p>}
+      <p id="single-delete-description" className="single-delete-copy">This removes only this response. Any other response from the same participant will remain.</p>
+      {deleteError && <p className="reset-error" role="alert">{deleteError}</p>}
+      <div className="single-delete-actions"><button className="button button-quiet" type="button" onClick={() => setDeleteTarget(null)} disabled={deleteBusy}>Cancel</button><button className="button single-delete-confirm" type="button" onClick={deleteResponse} disabled={deleteBusy || !deleteTarget}>{deleteBusy ? "Deleting…" : "Delete response"}</button></div>
+    </dialog>
   </main>;
 }
 
@@ -190,16 +249,20 @@ function Bar({ label, value, max }: { label: string; value: number; max: number 
 
 function Empty({ text }: { text: string }) { return <div className="empty-state"><span>◌</span><p>{text}</p></div>; }
 
-function ResponseRow({ row, index, opened, onToggle }: { row: SurveyResponse; index: number; opened: boolean; onToggle: () => void }) {
+function ResponseRow({ row, index, opened, onToggle, onDelete }: { row: SurveyResponse; index: number; opened: boolean; onToggle: () => void; onDelete: () => void }) {
   const classified = Object.values(row.waste_answers).filter((answer) => answer === "biodegradable" || answer === "non_biodegradable").length;
   return <article className={`response-record ${opened ? "expanded" : ""}`}>
-    <button className="response-summary" onClick={onToggle} aria-expanded={opened}>
-      <span className="response-index">{String(index).padStart(2, "0")}</span><span className="response-wave"><i className={row.wave === "follow_up" ? "dot peach" : "dot"} />{readable(row.wave)}<small className="participant-tag"> · {row.participant_code}</small></span>
-      <span className="response-date">{new Date(row.created_at).toLocaleString("en-RW", { dateStyle: "medium", timeStyle: "short" })}</span>
-      <span className="response-result"><strong>{row.knowledge_score}/5</strong><small>waste score</small></span><span className="expand-mark">{opened ? "−" : "+"}</span>
-    </button>
+    <div className="response-row-head">
+      <button className="response-summary" onClick={onToggle} aria-expanded={opened}>
+        <span className="response-index">{String(index).padStart(2, "0")}</span><span className="response-wave"><i className={row.wave === "follow_up" ? "dot peach" : "dot"} />{readable(row.wave)}<small className="participant-tag"> · {row.participant_code}</small></span>
+        <span className="response-date">{new Date(row.created_at).toLocaleString("en-RW", { dateStyle: "medium", timeStyle: "short" })}</span>
+        <span className="response-result"><strong>{row.knowledge_score}/5</strong><small>waste score</small></span><span className="expand-mark">{opened ? "−" : "+"}</span>
+      </button>
+      <button className="response-delete-button" type="button" onClick={onDelete} aria-label={`Delete ${readable(row.wave)} response for participant ${row.participant_code}`} title="Delete this response">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12M8 6V4h4v2m-6 0 1 10h6l1-10M8.5 9v4m3-4v4" /></svg><span>Delete</span>
+      </button>
+    </div>
     {opened && <div className="response-detail"><Detail label="Participant code" value={row.participant_code} /><Detail label="Heard news" value={row.heard_news ? "Yes" : "No"} /><Detail label="News language" value={readable(row.news_language)} /><Detail label="News sources" value={row.news_sources.map(readable).join(", ") || "—"} /><Detail label="Issues known" value={row.environmental_issues.map(readable).join(", ") || "—"} /><Detail label="Waste item answers" value={Object.entries(row.waste_answers).map(([key, answer]) => `${readable(key)}: ${readable(answer)}`).join(" · ")} /><Detail label="Waste score" value={`${row.knowledge_score} of 5 correct (${classified} items classified)`} /><Detail label="Helpful actions selected" value={row.clean_actions.map(readable).join(", ") || "—"} /><Detail label="Waste disposal" value={readable(row.waste_disposal)} /><Detail label="Separates waste" value={readable(row.separates_waste)} /><Detail label="Services used" value={row.services_used.map(readable).join(", ") || "—"} /><Detail label="Barriers" value={row.barriers.map(readable).join(", ") || "—"} /><Detail label="Record ID" value={row.id} /></div>}
   </article>;
 }
-
 function Detail({ label, value }: { label: string; value: string }) { return <div className="detail-cell"><small>{label}</small><span>{value}</span></div>; }
