@@ -55,7 +55,6 @@ const words = {
     issues: "Which of these have you heard about or noticed? Choose all that apply.",
     flooding: "Flooding", drought: "Drought", soil_erosion: "Soil erosion", heat: "Extreme heat", waste_pollution: "Pollution from waste", not_sure: "Not sure",
     waste_intro: "Look at each picture or item. Can it break down naturally?",
-    food_scraps: "Food scraps", leaves: "Leaves", plastic_bottle: "Plastic bottle", glass: "Glass bottle", metal: "Metal can",
     biodegradable: "Yes, biodegradable", non_biodegradable: "No, non-biodegradable", unsure: "Not sure",
     clean_actions_question: "Which actions help keep the surroundings clean? Choose all that apply.",
     separate_waste: "Separate waste where possible", use_collection: "Use waste collection", compost_action: "Compost food scraps", reduce_litter: "Keep rubbish off the ground", burn_waste: "Burn rubbish", dump_openly: "Dump rubbish in an open area",
@@ -79,7 +78,7 @@ const words = {
     sources: "Wabyumvise cyangwa wabibonye he? Hitamo ibisubizo byose bireba.", radio: "Radiyo", television: "Televiziyo", social_media: "Imbuga nkoranyambaga", community_meeting: "Inama y’abaturage", family_friends: "Umuryango cyangwa inshuti", other: "Ahandi", none: "Nta na hamwe",
     language_question: "Ni uruhe rurimi ukoresha kenshi kuri aya makuru?", rw: "Ikinyarwanda", en: "Icyongereza", other_language: "Urundi rurimi",
     issues: "Ni ibihe muri ibi wumviseho cyangwa wabonye? Hitamo ibisubizo byose bireba.", flooding: "Imyuzure", drought: "Amapfa", soil_erosion: "Isuri", heat: "Ubushyuhe bwinshi", waste_pollution: "Umwanda uterwa n’imyanda", not_sure: "Simbyizeye",
-    waste_intro: "Reba buri shusho cyangwa ikintu. Ese gishobora kubora kikavamo ibisanzwe?", food_scraps: "Ibisigazwa by’ibiryo", leaves: "Amababi", plastic_bottle: "Icupa rya pulasitiki", glass: "Icupa ry’ikirahure", metal: "Agakopo k’icyuma", biodegradable: "Yego, kirabora", non_biodegradable: "Oya, ntikibora", unsure: "Simbyizeye",
+    waste_intro: "Reba buri shusho. Ese ikintu kiri muri yo gishobora kubora kikavamo ibisanzwe?", biodegradable: "Yego, kirabora", non_biodegradable: "Oya, ntikibora", unsure: "Simbyizeye",
     clean_actions_question: "Ni ibihe bikorwa bifasha kugira aho dutuye hasukuye? Hitamo byose bireba.", separate_waste: "Gutandukanya imyanda aho bishoboka", use_collection: "Gukoresha serivisi yo gutwara imyanda", compost_action: "Gukora ifumbire mu bisigazwa by’ibiryo", reduce_litter: "Kutajugunya imyanda hasi", burn_waste: "Gutwika imyanda", dump_openly: "Kujugunya imyanda ahatagaragara",
     disposal_question: "Mu minsi 7 ishize, urugo rwanyu rwataye imyanda myinshi gute?", compost_disposal: "Mu kirundo cy’ifumbire", collection: "Serivisi yo gutwara imyanda", bushes_fields: "Mu gihuru cyangwa mu murima", burn: "Yarayitwitse", waterway: "Mu mugezi cyangwa mu mazi", not_sure_disposal: "Simbyizeye", other_disposal: "Ubundi buryo",
     separation_question: "Ese urugo rwanyu rutandukanya imyanda mbere yo kuyijugunya?", often: "Kenshi", sometimes: "Rimwe na rimwe", not_sure_sep: "Simbyizeye",
@@ -90,7 +89,13 @@ const words = {
 } as const;
 
 type Word = keyof typeof words.en;
-const wasteItems = ["food_scraps", "leaves", "plastic_bottle", "glass", "metal"] as const;
+const wasteItems = [
+  { key: "cardboard_egg_carton", image: "/waste-quiz/egg-carton.svg" },
+  { key: "paper_napkin", image: "/waste-quiz/paper-napkin.svg" },
+  { key: "wooden_matchsticks", image: "/waste-quiz/matchsticks.svg" },
+  { key: "disposable_diaper", image: "/waste-quiz/diaper.svg" },
+  { key: "nylon_fishing_line", image: "/waste-quiz/fishing-line.svg" },
+] as const;
 
 export default function SurveyForm() {
   const [lang, setLang] = useState<Lang>("en");
@@ -183,7 +188,7 @@ export default function SurveyForm() {
       setError(lang === "rw" ? "Subiza ibibazo bisigaye." : "Please answer the remaining required questions.");
       return;
     }
-    if (wasteItems.some((item) => !form.waste_answers[item])) {
+    if (wasteItems.some((item) => !form.waste_answers[item.key])) {
       setError(lang === "rw" ? "Subiza ikibazo kuri buri shusho y’imyanda." : "Please answer each waste picture question.");
       setStep(2);
       return;
@@ -243,7 +248,13 @@ export default function SurveyForm() {
         </div>}
         {step === 2 && <div className="survey-step">
           <p className="step-lead">{w("waste_intro")}</p>
-          {wasteItems.map((item, index) => <div className="waste-row" key={item}><div className={`waste-illustration waste-${index}`} aria-hidden="true">{["🥬", "🍃", "🧴", "🍾", "🥫"][index]}</div><div className="waste-question"><strong>{w(item as Word)}</strong>{radio(w(item as Word), [["biodegradable", w("biodegradable")], ["non_biodegradable", w("non_biodegradable")], ["not_sure", w("unsure")]], form.waste_answers[item] ?? "", (v) => setForm((current) => ({ ...current, waste_answers: { ...current.waste_answers, [item]: v } })) )}</div></div>)}
+          {wasteItems.map((item, index) => {
+            const pictureLabel = lang === "rw" ? `Ishusho ${index + 1}` : `Image ${index + 1}`;
+            return <div className="waste-row" key={item.key}>
+              <div className="waste-illustration"><img src={item.image} alt={pictureLabel} /></div>
+              <div className="waste-question">{radio(pictureLabel, [["biodegradable", w("biodegradable")], ["non_biodegradable", w("non_biodegradable")], ["not_sure", w("unsure")]], form.waste_answers[item.key] ?? "", (v) => setForm((current) => ({ ...current, waste_answers: { ...current.waste_answers, [item.key]: v } })))}</div>
+            </div>;
+          })}
           {field(w("clean_actions_question"), checks(w("clean_actions_question"), [["separate_waste", w("separate_waste")], ["use_collection", w("use_collection")], ["compost", w("compost_action")], ["reduce_litter", w("reduce_litter")], ["burn_waste", w("burn_waste")], ["dump_openly", w("dump_openly")], ["not_sure", w("unsure")]], form.clean_actions, (v) => toggle("clean_actions", v)))}
         </div>}
         {step === 3 && <div className="survey-step">

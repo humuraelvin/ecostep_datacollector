@@ -24,13 +24,13 @@ function isChoices<K extends ChoiceKey>(key: K, value: unknown): value is (typeo
   return Array.isArray(value) && value.length <= 10 && value.every((item) => isChoice(key, item));
 }
 
-const wasteKeys = ["food_scraps", "leaves", "plastic_bottle", "glass", "metal"] as const;
+const wasteKeys = ["cardboard_egg_carton", "paper_napkin", "wooden_matchsticks", "disposable_diaper", "nylon_fishing_line"] as const;
 const correctWaste: Record<(typeof wasteKeys)[number], string> = {
-  food_scraps: "biodegradable",
-  leaves: "biodegradable",
-  plastic_bottle: "non_biodegradable",
-  glass: "non_biodegradable",
-  metal: "non_biodegradable",
+  cardboard_egg_carton: "biodegradable",
+  paper_napkin: "biodegradable",
+  wooden_matchsticks: "biodegradable",
+  disposable_diaper: "non_biodegradable",
+  nylon_fishing_line: "non_biodegradable",
 };
 
 export async function POST(request: Request) {

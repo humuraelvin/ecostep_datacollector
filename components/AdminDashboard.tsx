@@ -5,6 +5,8 @@ import type { SurveyResponse } from "@/lib/types";
 
 const labels: Record<string, string> = {
   baseline: "First survey", follow_up: "Follow-up", yes: "Yes", no: "No", often: "Often", sometimes: "Sometimes",
+  cardboard_egg_carton: "Cardboard egg carton", paper_napkin: "Paper napkin", wooden_matchsticks: "Wooden matchsticks", disposable_diaper: "Disposable diaper", nylon_fishing_line: "Nylon fishing line",
+  food_scraps: "Food scraps", leaves: "Leaves", plastic_bottle: "Plastic bottle", glass: "Glass bottle", metal: "Metal can",
   kinyarwanda: "Kinyarwanda", english: "English", other: "Other", radio: "Radio", television: "Television", social_media: "Social media",
   community_meeting: "Community meeting", family_friends: "Family or friends", flooding: "Flooding", drought: "Drought", soil_erosion: "Soil erosion",
   heat: "Extreme heat", waste_pollution: "Waste pollution", biodegradable: "Biodegradable", non_biodegradable: "Non-biodegradable", not_sure: "Not sure",
