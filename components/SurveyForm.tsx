@@ -41,7 +41,7 @@ const words = {
   en: {
     language: "Language", english: "English", kinyarwanda: "Kinyarwanda",
     eyebrow: "Community research", title: "A few questions about our environment",
-    intro: "We’re learning what people hear, know, and do about the environment. There are no names on this survey.",
+    intro: "This research aims to understand how adults in our local community access climate and environmental news, what they know about biodegradable and non-biodegradable waste, and what they do to keep the surroundings clean. We also want to learn what makes these actions difficult. The findings will show where information or support is needed and help guide a suitable community response. Responses are recorded without names, using a participant code.",
     consent: "The purpose was explained, and the resident agreed to take part.",
     resident_question: "Does this person live in our local community?", resident_confirmed: "Yes, lives here", not_resident: "No",
     code_label: "Participant code", code_help: "Write this code down so the same resident can be matched in the follow-up. Do not write a name.", code_enter: "Enter the code from the first survey.", code_error: "Enter the participant code from the first survey.", resident_error: "This survey is for residents of our local community.", saved_code: "Participant code",
@@ -70,7 +70,7 @@ const words = {
   },
   rw: {
     language: "Ururimi", english: "Icyongereza", kinyarwanda: "Ikinyarwanda",
-    eyebrow: "Ubushakashatsi mu baturage", title: "Ibibazo bike ku bidukikije", intro: "Turiga ibyo abantu bumva, bazi, n’ibyo bakora ku bidukikije. Nta mazina yandikwa kuri iyi nyandiko.",
+    eyebrow: "Ubushakashatsi mu baturage", title: "Ibibazo bike ku bidukikije", intro: "Ubu bushakashatsi bugamije kumenya uko abantu bakuru bo mu muryango dutuyemo babona amakuru ku mihindagurikire y’ikirere n’ibidukikije, ibyo bazi ku myanda ibora n’itabora, n’ibikorwa bakora kugira ngo aho batuye hasukure. Turashaka kandi kumenya inzitizi zituma ibyo bikorwa bigorana. Ibisubizo bizagaragaza aho hakenewe amakuru cyangwa ubufasha, bifashe gutegura igisubizo kiboneye ku baturage. Nta mazina yandikwa; hakoreshejwe kode y’uwitabiriye.",
     consent: "Intego yasobanuwe, kandi uwabajijwe yemeye kwitabira.", wave: "Icyiciro cy’ibazwa", baseline: "Ibarura rya mbere", follow_up: "Ibarura rikurikiraho",
     resident_question: "Ese uyu muntu atuye muri uyu muryango?", resident_confirmed: "Yego, aratuye hano", not_resident: "Oya",
     code_label: "Kode y’uwitabiriye", code_help: "Andika iyi kode kugira ngo tuzamenye uwitabiriye mu ibarura rikurikiraho. Ntukandike izina.", code_enter: "Andika kode yo mu ibarura rya mbere.", code_error: "Andika kode yo mu ibarura rya mbere.", resident_error: "Iri barura rigenewe abatuye muri uyu muryango.", saved_code: "Kode y’uwitabiriye",
